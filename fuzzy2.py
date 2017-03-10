@@ -6,6 +6,8 @@ from fuzzywuzzy import process
 import copy
 from collections import deque
 import itertools
+from joblib import Parallel, delayed
+import multiprocessing
 import timeit
 
 start = timeit.default_timer()
@@ -24,10 +26,10 @@ def findWholeWord(w,str):
         return True
     return False
     
-solar_internal = filter(lambda x: findWholeWord('solar',x),internal_column)
+# solar_internal = filter(lambda x: findWholeWord('solar',x),internal_column)
 solar_external = filter(lambda x: findWholeWord('solar',x),external_column)
 
-# solar_internal = internal_column
+solar_internal = internal_column
 # solar_external = external_column
 # for i in solar_internal:
 #     print(i)
@@ -39,25 +41,31 @@ def commonwords(column):
     return Counter(lower_words)
 
 # print(len(list(solar_internal))/5)
-# print most common words in each file
+# print most common words in each fileq
 # print(commonwords(solar_internal).most_common(11),"\n",commonwords(solar_external).most_common(11))
 
 regex = r"^[^aeiuo]+$"
 number_regex = r"\d"
-remove_list = {'fund','us','co','i','ii','iii','vi','vii','corp','company','group','trust','term','solar','power','plant','project','commercial','loan','portfolio','refinancing','farm','financing','acquisition','park','water','wind'}
+remove_list = {'fund','us','co','shell','shell:','i','ii','iii','vi','vii','corp','terminal','pipeline','transmission', 'transmissions','company','electricity','utility','utilities','limited','road','group','trust','term','solar','power','plant','project','commercial','loan','ltd','bank','portfolio','refinancing','farm','financing','acquisition','park','water','wind','capital','inc','inc.'}
 remove = '|'.join(remove_list)
 states = {'ak': 'alaska','al': 'alabama','ar': 'arkansas','az': 'arizona','ca': 'california','co': 'colorado','ct': 'connecticut','dc': 'district of columbia','de': 'delaware','fl': 'florida','ga': 'georgia','gu': 'guam','hi': 'hawaii','ia': 'iowa','id': 'idaho','il': 'illinois','in': 'indiana','ks': 'kansas','ky': 'kentucky','la': 'louisiana','ma': 'massachusetts','md': 'maryland','me': 'maine','mi': 'michigan','mn': 'minnesota','mo': 'missouri','mp': 'northern mariana islands','ms': 'mississippi','mt': 'montana','na': 'national','nc': 'north carolina','nd': 'north dakota','ne': 'nebraska','nh': 'new hampshire','nj': 'new jersey','nm': 'new mexico','nv': 'nevada','ny': 'new york','oh': 'ohio','ok': 'oklahoma','or': 'oregon','pa': 'pennsylvania','pr': 'puerto rico','ri': 'rhode island','sc': 'south carolina','sd': 'south dakota','tn': 'tennessee','tx': 'texas','ut': 'utah','va': 'virginia','vi': 'virgin islands','vt': 'vermont','wa': 'washington','wi': 'wisconsin','wv': 'west virginia','wy': 'wyoming'}
 
 test_dict = dict()
 
-# solar_internal = ['Catalina']
+# solar_internal = ['ABERCROMBIE & FITC']
 for line in solar_internal:
     wordline = list()
     if len(line.split())>1:
-        for word in itertools.islice(line.split() , 0, 2):
+        terminate = 2
+        for num,word in enumerate(line.split()):
             lower_word = word.lower()
+            if num == terminate:
+                break
             if lower_word == 'shell' or lower_word == 'shell:' :
+                terminate += 1
                 continue
+            if lower_word == '&' or lower_word == 'of':
+                terminate += 1
             if lower_word in remove_list and len(wordline) > 0:
                 break
             elif lower_word in remove_list and len(wordline) == 0:
@@ -71,7 +79,7 @@ for line in solar_internal:
         wordline.append(line)
     if len(wordline) == 0:
         wordline.append(line)
-    # print(line,'->', ' '.join(wordline))
+    print(line,'->', ' '.join(wordline))
     test_dict[' '.join(wordline)] = line
     
 # print(list(external))
@@ -81,12 +89,12 @@ w = {k: v.lower() for k, v in w.items()}
 w = {k: v for k, v in w.items() if findWholeWord('solar',v)}
 
 #for dict
-for key,value in test_dict.items():
-    # print(y)
-    example = copy.deepcopy(w)
-    gua = process.extractBests(key,example,scorer=fuzz.partial_ratio,score_cutoff=90, limit=5)
-    if gua:
-        print(value,"->",key,":",gua)
+# for key,value in test_dict.items():
+#     # print(y)
+#     example = copy.deepcopy(w)
+#     gua = process.extractBests(key,example,scorer=fuzz.partial_ratio,score_cutoff=50, limit=5)
+#     if gua:
+#         print(value,"->",key,":",gua)
         
 # print(test_dict)
 stop = timeit.default_timer()
